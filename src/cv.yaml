@@ -1,0 +1,123 @@
+name: Anton Korolkov
+title: Senior Frontend Engineer
+email: peancored@gmail.com
+location: London, United Kingdom
+
+links:
+  linkedin: https://linkedin.com/in/antonkorolkov
+  github: https://github.com/antonkorolkov
+
+summary: >
+  Senior frontend engineer with 10 years of experience building high-performance
+  web applications at scale. Specialised in data visualisation, complex UI
+  architecture, and performance optimisation. Currently at Millennium as a
+  Quantitative Developer. Led teams at Datadog, delivered critical performance
+  wins at a major investment bank, and contributed to open-source at Vaadin.
+  Enjoy mentoring and taking ownership of technically challenging problems.
+
+skills:
+  - JavaScript
+  - TypeScript
+  - React
+  - Node.js
+  - Team Leadership
+  - Mentoring
+
+languages:
+  - English
+  - Russian
+
+experience:
+  - role: Quantitative Developer
+    company: Millennium
+    location: London
+    period: Dec 2024 — Present
+    highlights: []
+
+  - role: Frontend Developer
+    company: Datadog
+    location: London
+    period: Oct 2021 — Nov 2024
+    highlights:
+      - Architected and led the full rewrite of a core graph visualisation component, taking it from a five-year-old unmaintainable codebase to a modern, scalable implementation adopted across multiple products
+      - Led a team of four engineers through multiple production releases of the component across various products
+      - Developed and optimised a range of data visualisations using HTML5 Canvas, focusing on performance for high cardinality data
+      - Mentored junior team members
+
+  - role: Senior Frontend Developer — Leading Wall Street Investment Bank
+    company: Publicis Sapient
+    location: London
+    period: Dec 2019 — Oct 2021
+    highlights:
+      - Sole front-end developer responsible for performance; cut load time from 10s to under 5s despite architectural constraints that ruled out conventional optimisation approaches
+      - Developed custom solutions and negotiated effectively with other teams to implement optimisations with minimal disruption
+      - Proposed strategic structural changes to further enhance performance across teams
+      - Mentored client's junior developers
+
+  - role: Senior Frontend Developer — Greenfield project for Schroders
+    company: Publicis Sapient
+    location: London
+    period: Jul 2019 — Sep 2019
+    highlights:
+      - Collaborated with a team to deliver a greenfield project under tight release deadlines
+      - Implemented frontend solutions focusing on user experience and engagement
+
+  - role: Senior Full-stack Developer — Unilever
+    company: Publicis Sapient
+    location: London
+    period: Apr 2019 — Jul 2019
+    highlights:
+      - Built and supported a serverless application using AWS Lambda, Node.js, DynamoDB, and React
+      - Collaborated with cross-functional teams to ensure timely delivery
+
+  - role: Frontend Developer
+    company: Vaadin
+    location: Turku, Finland
+    period: Jun 2017 — Apr 2019
+    highlights:
+      - Contributed to open-source web components library using the Polymer framework
+      - Delivered customised Vaadin framework solutions for clients with direct engagement to understand business needs
+      - Enhanced Vaadin's open-source grid component with numerous client-specific features
+      - Led frontend development for a remote client using Angular, including on-site visits and representing Vaadin in strategic meetings
+      - Developed an internal mobile application using Cordova for a remote client
+
+  - role: Lead Front-End Developer
+    company: GaGa Games
+    location: Saint Petersburg, Russia
+    period: Mar 2016 — Jul 2017
+    highlights:
+      - Built kvakka.com from scratch, leading frontend development and delivering the MVP
+      - Designed a custom EmberJS-inspired data layer for AngularJS handling models, collections, relations, and caching
+      - Mentored a junior developer and collaborated with designers and stakeholders on requirements
+
+  - role: Lead Back-end Developer
+    company: NPM Group
+    location: Novosibirsk, Russia
+    period: Aug 2015 — Mar 2016
+    highlights:
+      - Led back-end development of social networking platform absoulera.com
+      - Optimised complex queries and implemented new features to enhance system performance
+      - Collaborated with front-end developers to ensure seamless data integration
+
+  - role: Full-stack Developer
+    company: Sybis Technologies
+    location: Novosibirsk, Russia
+    period: Mar 2015 — Aug 2015
+    highlights:
+      - Developed a business management system covering equipment inventory, contractor management, and employee tracking
+      - Built a university student database system with role-based access for students and teachers
+
+education:
+  - degree: Bachelor's degree in Physics
+    institution: Novosibirsk State Technical University (NSTU)
+    location: Novosibirsk
+    period: Sep 2012 — Sep 2015
+    note: Successfully completed 3 out of 4 years
+    courses:
+      - Calculus and advanced calculus
+      - Linear algebra
+      - Algorithms & data structures
+      - Programming
+      - Theoretical physics
+      - Electronics
+    activities: Attending mathematical and programming club
