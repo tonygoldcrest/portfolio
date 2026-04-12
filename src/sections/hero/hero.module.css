@@ -1,0 +1,18 @@
+.gradientText {
+  --mouse-x: 50%;
+  --mouse-y: 50%;
+  background: radial-gradient(
+    circle at var(--mouse-x) var(--mouse-y),
+    currentColor,
+    hsl(from var(--color-text) h s calc(l / 2))
+  );
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.neonText {
+  --gradient-color: #00ADB5;
+  text-shadow:
+    0 0 2px currentColor,
+    0 0 10px var(--gradient-color);
+}
