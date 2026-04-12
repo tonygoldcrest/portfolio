@@ -1,6 +1,7 @@
-import { cn } from '@/lib/utils';
 import type { IconDefinition } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import styles from './icon-text.module.css';
+import { cn } from '@/lib/utils';
 
 export type IconTextProps = {
   icon: IconDefinition;
@@ -10,9 +11,9 @@ export type IconTextProps = {
 
 export function IconText({ icon, text, className }: IconTextProps) {
   return (
-    <div className={cn('flex gap-1 items-center', className)}>
+    <div className={cn(styles.root, className)}>
       <FontAwesomeIcon icon={icon} />
-      <div>{text}</div>
+      <span>{text}</span>
     </div>
   );
 }

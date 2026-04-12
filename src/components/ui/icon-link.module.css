@@ -1,0 +1,49 @@
+.link {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 1;
+  padding: 0.25rem;
+  background-color: var(--foreground);
+  border: 3px solid white;
+  border-radius: 0.75rem;
+  overflow: hidden;
+  z-index: 1;
+  transition: box-shadow 0.3s ease;
+  text-decoration: none;
+}
+
+.link::before {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: var(--brand-color, #fff);
+  transition: top 0.5s;
+  z-index: 2;
+}
+
+.link:hover::before {
+  top: 0;
+}
+
+.link:hover {
+  box-shadow:
+    0 0 6px 1px var(--foreground),
+    0 0 20px 4px var(--brand-color, #fff);
+}
+
+.icon {
+  position: relative;
+  z-index: 3;
+  color: #262626;
+  transition: all 0.5s;
+}
+
+.link:hover .icon {
+  color: white;
+  transform: rotateY(360deg);
+}
