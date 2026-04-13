@@ -15,16 +15,21 @@
     "@fortawesome/free-brands-svg-icons": "^7.2.0",
     "@fortawesome/free-solid-svg-icons": "^7.2.0",
     "@fortawesome/react-fontawesome": "^3.3.0",
+    "dat.gui": "^0.7.9",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
-    "react-router-dom": "^7.14.0"
+    "react-router-dom": "^7.14.0",
+    "stats.js": "^0.17.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",
     "@modyfi/vite-plugin-yaml": "^1.1.1",
+    "@types/dat.gui": "^0.7.13",
+    "@types/emscripten": "^1.41.5",
     "@types/node": "^24.12.2",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
+    "@types/stats.js": "^0.17.4",
     "@vitejs/plugin-react": "^6.0.1",
     "eslint": "^9.39.4",
     "eslint-config-prettier": "^10.1.8",

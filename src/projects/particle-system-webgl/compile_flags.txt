@@ -1,0 +1,5 @@
+--target=wasm32-unknown-emscripten
+--sysroot=/opt/homebrew/Cellar/emscripten/4.0.23/libexec/cache/sysroot
+-I/opt/homebrew/Cellar/emscripten/4.0.23/libexec/cache/sysroot/include/compat
+-D__EMSCRIPTEN__
+-D__EMSCRIPTEN_SHARED_MEMORY__=1
