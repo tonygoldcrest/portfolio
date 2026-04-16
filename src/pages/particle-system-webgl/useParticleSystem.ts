@@ -1,5 +1,6 @@
 import Stats from 'stats.js';
 import { useCallback, useEffect, useRef } from 'react';
+import { useControls } from 'leva';
 import {
   ParticleSystem,
   type WasmModule,
@@ -33,6 +34,51 @@ function loadWasm() {
 }
 
 export function useParticleSystem() {
+  const {
+    particlesNum,
+    bounceX,
+    bounceY,
+    squared,
+    enableMotionBlur,
+    party,
+    image,
+    particleSize,
+    spawnRadius,
+    particleOpacity,
+    particleColor,
+    backgroundColor,
+  } = useControls({
+    particlesNum: {
+      label: 'Particles',
+      value: 1_000_000,
+      options: {
+        UltraLow: 1_000,
+        SuperLow: 4_000,
+        VeryLow: 7_000,
+        Low: 10_000,
+        Medium: 50_000,
+        High: 100_000,
+        VeryHigh: 500_000,
+        Ultra: 1_000_000,
+        Mega: 2_000_000,
+        Duper: 3_000_000,
+        Nightmare: 4_000_000,
+        UltraNightmare: 5_000_000,
+      },
+    },
+    particleSize: { value: 2, min: 1, max: 100, step: 1 },
+    particleOpacity: { value: 0.5, min: 0, max: 1, step: 0.01 },
+    spawnRadius: { value: 200, min: 20, max: 500 },
+    particleColor: '#1e272e',
+    backgroundColor: '#ecf0f1',
+    bounceX: true,
+    bounceY: true,
+    squared: true,
+    enableMotionBlur: true,
+    party: false,
+    image: false,
+  });
+
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const appRef = useRef<ParticleSystem | null>(null);
   const rafRef = useRef<number>(null);
@@ -252,6 +298,62 @@ export function useParticleSystem() {
     keyupHandler,
     renderFrame,
   ]);
+
+  useEffect(() => {
+    appRef.current?.createParticles(particlesNum);
+  }, [particlesNum]);
+
+  useEffect(() => {
+    appRef.current?.setParticleSize(particleSize);
+  }, [particleSize]);
+
+  useEffect(() => {
+    appRef.current?.setParticleOpacity(particleOpacity);
+  }, [particleOpacity]);
+
+  useEffect(() => {
+    appRef.current?.setParticleColor(particleColor);
+  }, [particleColor]);
+
+  useEffect(() => {
+    appRef.current?.setBackgroundColor(backgroundColor);
+  }, [backgroundColor]);
+
+  useEffect(() => {
+    appRef.current?.setReadFromTexture(image);
+  }, [image]);
+
+  useEffect(() => {
+    appRef.current?.setPartyMode(party);
+  }, [party]);
+
+  useEffect(() => {
+    appRef.current?.setMotionBlur(enableMotionBlur);
+  }, [enableMotionBlur]);
+
+  useEffect(() => {
+    if (appRef.current) {
+      appRef.current.bounceX = bounceX;
+    }
+  }, [bounceX]);
+
+  useEffect(() => {
+    if (appRef.current) {
+      appRef.current.bounceY = bounceY;
+    }
+  }, [bounceY]);
+
+  useEffect(() => {
+    if (appRef.current) {
+      appRef.current.squared = squared;
+    }
+  }, [squared]);
+
+  useEffect(() => {
+    if (appRef.current) {
+      appRef.current.spawnRadius = spawnRadius;
+    }
+  }, [spawnRadius]);
 
   function saveScreenshot() {
     const canvas = canvasRef.current;
