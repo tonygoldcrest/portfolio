@@ -75,7 +75,9 @@ public:
     velocity->y += y;
   }
 
-  void move(float friction) { position->add(velocity->multiply(1.0f / friction)); }
+  void move(float friction) {
+    position->add(velocity->multiply(1.0f / friction));
+  }
 };
 
 Particle **particles;
@@ -308,7 +310,7 @@ void calcPartCoordinates(float canvasWidth, float canvasHeight,
       length = sqrt(pow(forceCenterX - particles[i]->position->x, 2) +
                     pow(forceCenterY - particles[i]->position->y, 2));
 
-      forceMagnitude = 0.07 * (1 / length) * timeScale;
+      forceMagnitude = 0.07 * (1 / fmax(length, 5.0f)) * timeScale;
 
       particles[i]->addForce(
           forceMagnitude * (forceCenterX - particles[i]->position->x),
@@ -319,7 +321,7 @@ void calcPartCoordinates(float canvasWidth, float canvasHeight,
       length = sqrt(pow(heavyParticles[j]->x - particles[i]->position->x, 2) +
                     pow(heavyParticles[j]->y - particles[i]->position->y, 2));
 
-      forceMagnitude = 0.07 * (1 / length) * timeScale;
+      forceMagnitude = 0.07 * (1 / fmax(length, 5.0f)) * timeScale;
 
       particles[i]->addForce(
           forceMagnitude * (heavyParticles[j]->x - particles[i]->position->x),

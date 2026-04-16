@@ -113,8 +113,8 @@ export function getDefaultAppConfig(ps: ParticleSystem) {
             return;
           }
 
-          ps.gl.useProgram(ps.particleProgram);
-          ps.gl.uniform1f(ps.readFromTextureLocation, newValue ? 1 : 0);
+          ps.glContext.useProgram(ps.particleProgram);
+          ps.glContext.uniform1f(ps.readFromTextureLocation, newValue ? 1 : 0);
         },
         onChangeFunc: 'onChange',
       },
@@ -129,7 +129,7 @@ export function getDefaultAppConfig(ps: ParticleSystem) {
           }
 
           if (!newValue) {
-            ps.gl.uniform3f(ps.coefficientsLocation, 1, 1, 1);
+            ps.glContext.uniform3f(ps.coefficientsLocation, 1, 1, 1);
           }
         },
         onChangeFunc: 'onChange',
@@ -163,7 +163,7 @@ export function getDefaultAppConfig(ps: ParticleSystem) {
             return;
           }
 
-          ps.gl.uniform1f(ps.pointSizeLocation, newValue as number);
+          ps.glContext.uniform1f(ps.pointSizeLocation, newValue as number);
         },
         onChangeFunc: 'onChange',
       },
@@ -184,7 +184,10 @@ export function getDefaultAppConfig(ps: ParticleSystem) {
             return;
           }
 
-          ps.gl.uniform1f(ps.particleOpacityLocation, newValue as number);
+          ps.glContext.uniform1f(
+            ps.particleOpacityLocation,
+            newValue as number,
+          );
         },
         onChangeFunc: 'onChange',
       },
@@ -229,8 +232,8 @@ export function getDefaultAppConfig(ps: ParticleSystem) {
             return;
           }
 
-          ps.gl.useProgram(ps.particleProgram);
-          ps.gl.uniform3f(
+          ps.glContext.useProgram(ps.particleProgram);
+          ps.glContext.uniform3f(
             ps.particleColorLocation,
             particleColorRgb.r,
             particleColorRgb.g,
@@ -257,8 +260,8 @@ export function getDefaultAppConfig(ps: ParticleSystem) {
           }
 
           ps.cachedBackgroundColor = backgroundColorRgb;
-          ps.gl.useProgram(ps.triangleProgram);
-          ps.gl.uniform3f(
+          ps.glContext.useProgram(ps.triangleProgram);
+          ps.glContext.uniform3f(
             ps.backgroundColorLocation,
             backgroundColorRgb.r,
             backgroundColorRgb.g,

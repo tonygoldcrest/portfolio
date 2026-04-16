@@ -1,8 +1,6 @@
-import Stats from 'stats.js';
 import {
   createShader,
   createProgram,
-  resizeCanvasToDisplaySize,
   hexToRgb,
   getDefaultAppConfig,
 } from './helpers.js';
@@ -30,7 +28,6 @@ import triangleVertexSrc from './shaders/triangle.vertex.glsl?raw';
 import triangleFragmentSrc from './shaders/triangle.fragment.glsl?raw';
 
 export class ParticleSystem {
-  particlesCoordinates?: Float32Array;
   particleProgram: WebGLProgram | null = null;
   positionBuffer?: WebGLBuffer;
   triangleBuffer?: WebGLBuffer;
@@ -46,35 +43,18 @@ export class ParticleSystem {
   readFromTextureLocation: WebGLUniformLocation | null = null;
   particlesVao: WebGLVertexArrayObject | null = null;
   trianglesVao: WebGLVertexArrayObject | null = null;
-  animFrameId?: number;
-  stats!: Stats;
-  isMouseDown = false;
-  isForceApplied = false;
-  mouseDownPosition = new Vector2(0, 0);
-  forceCenter = new Vector2(0, 0);
-  isPaused = false;
   startTime = Date.now();
 
-  gl!: WebGL2RenderingContext;
+  glContext: WebGL2RenderingContext;
   config = getDefaultAppConfig(this);
   triangles = new Float32Array([-1, -1, -1, 1, 1, 1, 1, 1, 1, -1, -1, -1]);
   particlesNum = this.config.values.particlesNum as number;
-  canvas: HTMLCanvasElement;
-  Module: WasmModule;
+  wasmModule: WasmModule;
 
-  constructor(canvas: HTMLCanvasElement, Module: WasmModule) {
-    this.canvas = canvas;
-    this.Module = Module;
+  constructor(glContext: WebGL2RenderingContext, wasmModule: WasmModule) {
+    this.wasmModule = wasmModule;
 
-    const gl = canvas.getContext('webgl2', {
-      preserveDrawingBuffer: this.config.values.enableMotionBlur,
-    }) as WebGL2RenderingContext;
-
-    if (!gl) {
-      return;
-    }
-
-    this.gl = gl;
+    this.glContext = glContext;
 
     this.setupGl();
     this.setupParticleProgram();
@@ -82,43 +62,51 @@ export class ParticleSystem {
     if (this.config.values.enableMotionBlur) {
       this.setupTriangleProgram();
 
-      this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.positionBuffer!);
+      this.glContext.bindBuffer(
+        this.glContext.ARRAY_BUFFER,
+        this.positionBuffer!,
+      );
     }
-
-    this.stats = new Stats();
-    this.stats.showPanel(0);
-    this.canvas.parentElement?.appendChild(this.stats.dom);
 
     this.createParticles(this.particlesNum);
 
-    this.setupEventListeners();
+    if (this.config.values.enableMotionBlur) {
+      this.clearColors(this.config.values.particleColor as string);
+    }
   }
 
   setupGl() {
-    this.positionBuffer = this.gl.createBuffer();
-    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.positionBuffer);
-    this.gl.blendFuncSeparate(
-      this.gl.SRC_ALPHA,
-      this.gl.ONE_MINUS_SRC_ALPHA,
-      this.gl.ONE,
-      this.gl.ONE_MINUS_SRC_ALPHA,
+    this.positionBuffer = this.glContext.createBuffer();
+    this.glContext.bindBuffer(this.glContext.ARRAY_BUFFER, this.positionBuffer);
+    this.glContext.blendFuncSeparate(
+      this.glContext.SRC_ALPHA,
+      this.glContext.ONE_MINUS_SRC_ALPHA,
+      this.glContext.ONE,
+      this.glContext.ONE_MINUS_SRC_ALPHA,
     );
-    this.gl.enable(this.gl.BLEND);
-    this.gl.disable(this.gl.DEPTH_TEST);
-    resizeCanvasToDisplaySize(this.gl.canvas as HTMLCanvasElement, 2);
-    this.gl.viewport(0, 0, this.gl.canvas.width, this.gl.canvas.height);
+    this.glContext.enable(this.glContext.BLEND);
+    this.glContext.disable(this.glContext.DEPTH_TEST);
+
+    this.glContext.viewport(
+      0,
+      0,
+      this.glContext.canvas.width,
+      this.glContext.canvas.height,
+    );
   }
 
   createParticles(N: number) {
-    this.Module.createParticles(
+    this.wasmModule.createParticles(
       N,
-      this.gl.canvas.width / 2,
-      this.gl.canvas.height / 2,
+      this.glContext.canvas.width / 2,
+      this.glContext.canvas.height / 2,
       this.config.values.spawnRadius as number,
       0.01,
     );
     this.particlesNum = N;
-    this.gl.clear(this.gl.COLOR_BUFFER_BIT | this.gl.DEPTH_BUFFER_BIT);
+    this.glContext.clear(
+      this.glContext.COLOR_BUFFER_BIT | this.glContext.DEPTH_BUFFER_BIT,
+    );
   }
 
   drawTriangles() {
@@ -126,9 +114,9 @@ export class ParticleSystem {
       return;
     }
 
-    this.gl.useProgram(this.triangleProgram);
-    this.gl.bindVertexArray(this.trianglesVao);
-    this.gl.drawArrays(this.gl.TRIANGLES, 0, 6);
+    this.glContext.useProgram(this.triangleProgram);
+    this.glContext.bindVertexArray(this.trianglesVao);
+    this.glContext.drawArrays(this.glContext.TRIANGLES, 0, 6);
   }
 
   clearColors(color: string) {
@@ -136,20 +124,20 @@ export class ParticleSystem {
     if (!colorRgb) {
       return;
     }
-    this.gl.clearColor(colorRgb.r, colorRgb.g, colorRgb.b, 1);
-    this.gl.clear(this.gl.COLOR_BUFFER_BIT);
+    this.glContext.clearColor(colorRgb.r, colorRgb.g, colorRgb.b, 1);
+    this.glContext.clear(this.glContext.COLOR_BUFFER_BIT);
     for (let i = 0; i < 40; i++) this.drawTriangles();
   }
 
   setupParticleProgram() {
     const particleVertexShader = createShader(
-      this.gl,
-      this.gl.VERTEX_SHADER,
+      this.glContext,
+      this.glContext.VERTEX_SHADER,
       particleVertexSrc,
     );
     const particleFragmentShader = createShader(
-      this.gl,
-      this.gl.FRAGMENT_SHADER,
+      this.glContext,
+      this.glContext.FRAGMENT_SHADER,
       particleFragmentSrc,
     );
 
@@ -158,7 +146,7 @@ export class ParticleSystem {
     }
 
     this.particleProgram = createProgram(
-      this.gl,
+      this.glContext,
       particleVertexShader,
       particleFragmentShader,
     );
@@ -167,50 +155,52 @@ export class ParticleSystem {
       return;
     }
 
-    this.pointSizeLocation = this.gl.getUniformLocation(
+    this.pointSizeLocation = this.glContext.getUniformLocation(
       this.particleProgram,
       'uPointSize',
     );
-    this.readFromTextureLocation = this.gl.getUniformLocation(
+    this.readFromTextureLocation = this.glContext.getUniformLocation(
       this.particleProgram,
       'uReadFromTexture',
     );
-    this.coefficientsLocation = this.gl.getUniformLocation(
+    this.coefficientsLocation = this.glContext.getUniformLocation(
       this.particleProgram,
       'uCoefficients',
     );
-    this.particleOpacityLocation = this.gl.getUniformLocation(
+    this.particleOpacityLocation = this.glContext.getUniformLocation(
       this.particleProgram,
       'uOpacity',
     );
-    this.particleColorLocation = this.gl.getUniformLocation(
+    this.particleColorLocation = this.glContext.getUniformLocation(
       this.particleProgram,
       'uColor',
     );
 
-    this.particlesVao = this.gl.createVertexArray();
-    this.gl.bindVertexArray(this.particlesVao);
+    this.particlesVao = this.glContext.createVertexArray();
+    this.glContext.bindVertexArray(this.particlesVao);
 
-    this.particlePositionAttributeLocation = this.gl.getAttribLocation(
+    this.particlePositionAttributeLocation = this.glContext.getAttribLocation(
       this.particleProgram,
       'aPosition',
     );
-    this.gl.enableVertexAttribArray(this.particlePositionAttributeLocation);
-    this.gl.vertexAttribPointer(
+    this.glContext.enableVertexAttribArray(
+      this.particlePositionAttributeLocation,
+    );
+    this.glContext.vertexAttribPointer(
       this.particlePositionAttributeLocation,
       2,
-      this.gl.FLOAT,
+      this.glContext.FLOAT,
       false,
       2 * Float32Array.BYTES_PER_ELEMENT,
       0,
     );
 
-    this.gl.useProgram(this.particleProgram);
-    this.gl.uniform1f(
+    this.glContext.useProgram(this.particleProgram);
+    this.glContext.uniform1f(
       this.pointSizeLocation,
       this.config.values.particleSize as number,
     );
-    this.gl.uniform1f(
+    this.glContext.uniform1f(
       this.particleOpacityLocation,
       this.config.values.particleOpacity as number,
     );
@@ -218,68 +208,68 @@ export class ParticleSystem {
       this.config.values.particleColor as string,
     );
     if (particleColorRgb) {
-      this.gl.uniform3f(
+      this.glContext.uniform3f(
         this.particleColorLocation,
         particleColorRgb.r,
         particleColorRgb.g,
         particleColorRgb.b,
       );
     }
-    this.gl.uniform3f(this.coefficientsLocation, 1, 1, 1);
+    this.glContext.uniform3f(this.coefficientsLocation, 1, 1, 1);
   }
 
   loadImage(image: TexImageSource) {
     if (!this.particleProgram) {
       return;
     }
-    this.gl.useProgram(this.particleProgram);
-    const imageLocation = this.gl.getUniformLocation(
+    this.glContext.useProgram(this.particleProgram);
+    const imageLocation = this.glContext.getUniformLocation(
       this.particleProgram,
       'uImage',
     );
-    const texture = this.gl.createTexture();
-    this.gl.activeTexture(this.gl.TEXTURE0 + 0);
-    this.gl.bindTexture(this.gl.TEXTURE_2D, texture);
-    this.gl.texParameteri(
-      this.gl.TEXTURE_2D,
-      this.gl.TEXTURE_WRAP_S,
-      this.gl.CLAMP_TO_EDGE,
+    const texture = this.glContext.createTexture();
+    this.glContext.activeTexture(this.glContext.TEXTURE0 + 0);
+    this.glContext.bindTexture(this.glContext.TEXTURE_2D, texture);
+    this.glContext.texParameteri(
+      this.glContext.TEXTURE_2D,
+      this.glContext.TEXTURE_WRAP_S,
+      this.glContext.CLAMP_TO_EDGE,
     );
-    this.gl.texParameteri(
-      this.gl.TEXTURE_2D,
-      this.gl.TEXTURE_WRAP_T,
-      this.gl.CLAMP_TO_EDGE,
+    this.glContext.texParameteri(
+      this.glContext.TEXTURE_2D,
+      this.glContext.TEXTURE_WRAP_T,
+      this.glContext.CLAMP_TO_EDGE,
     );
-    this.gl.texParameteri(
-      this.gl.TEXTURE_2D,
-      this.gl.TEXTURE_MIN_FILTER,
-      this.gl.NEAREST,
+    this.glContext.texParameteri(
+      this.glContext.TEXTURE_2D,
+      this.glContext.TEXTURE_MIN_FILTER,
+      this.glContext.NEAREST,
     );
-    this.gl.texParameteri(
-      this.gl.TEXTURE_2D,
-      this.gl.TEXTURE_MAG_FILTER,
-      this.gl.NEAREST,
+    this.glContext.texParameteri(
+      this.glContext.TEXTURE_2D,
+      this.glContext.TEXTURE_MAG_FILTER,
+      this.glContext.NEAREST,
     );
-    this.gl.texImage2D(
-      this.gl.TEXTURE_2D,
+    this.glContext.texImage2D(
+      this.glContext.TEXTURE_2D,
       0,
-      this.gl.RGBA,
-      this.gl.RGBA,
-      this.gl.UNSIGNED_BYTE,
+      this.glContext.RGBA,
+      this.glContext.RGBA,
+      this.glContext.UNSIGNED_BYTE,
       image,
     );
-    this.gl.uniform1i(imageLocation, 0);
+    this.glContext.uniform1i(imageLocation, 0);
   }
 
   setupTriangleProgram() {
     const triangleVertexShader = createShader(
-      this.gl,
-      this.gl.VERTEX_SHADER,
+      this.glContext,
+      this.glContext.VERTEX_SHADER,
       triangleVertexSrc,
     );
     const triangleFragmentShader = createShader(
-      this.gl,
-      this.gl.FRAGMENT_SHADER,
+      this.glContext,
+      this.glContext.FRAGMENT_SHADER,
       triangleFragmentSrc,
     );
     if (!triangleVertexShader || !triangleFragmentShader) {
@@ -287,7 +277,7 @@ export class ParticleSystem {
     }
 
     this.triangleProgram = createProgram(
-      this.gl,
+      this.glContext,
       triangleVertexShader,
       triangleFragmentShader,
     );
@@ -296,47 +286,49 @@ export class ParticleSystem {
       return;
     }
 
-    this.gl.useProgram(this.triangleProgram);
+    this.glContext.useProgram(this.triangleProgram);
 
-    this.trianglesVao = this.gl.createVertexArray();
-    this.gl.bindVertexArray(this.trianglesVao);
+    this.trianglesVao = this.glContext.createVertexArray();
+    this.glContext.bindVertexArray(this.trianglesVao);
 
-    this.triangleBuffer = this.gl.createBuffer()!;
-    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.triangleBuffer);
-    this.gl.bufferData(
-      this.gl.ARRAY_BUFFER,
+    this.triangleBuffer = this.glContext.createBuffer()!;
+    this.glContext.bindBuffer(this.glContext.ARRAY_BUFFER, this.triangleBuffer);
+    this.glContext.bufferData(
+      this.glContext.ARRAY_BUFFER,
       this.triangles,
-      this.gl.STATIC_DRAW,
+      this.glContext.STATIC_DRAW,
     );
 
-    this.backgroundColorLocation = this.gl.getUniformLocation(
+    this.backgroundColorLocation = this.glContext.getUniformLocation(
       this.triangleProgram,
       'uBackground',
     );
-    this.trianglePositionAttributeLocation = this.gl.getAttribLocation(
+    this.trianglePositionAttributeLocation = this.glContext.getAttribLocation(
       this.triangleProgram,
       'aPosition',
     );
-    this.gl.vertexAttribPointer(
+    this.glContext.vertexAttribPointer(
       this.trianglePositionAttributeLocation,
       2,
-      this.gl.FLOAT,
+      this.glContext.FLOAT,
       false,
       0,
       0,
     );
-    this.gl.enableVertexAttribArray(this.trianglePositionAttributeLocation);
-    this.gl.bufferData(
-      this.gl.ARRAY_BUFFER,
+    this.glContext.enableVertexAttribArray(
+      this.trianglePositionAttributeLocation,
+    );
+    this.glContext.bufferData(
+      this.glContext.ARRAY_BUFFER,
       this.triangles,
-      this.gl.STATIC_DRAW,
+      this.glContext.STATIC_DRAW,
     );
 
     this.cachedBackgroundColor = hexToRgb(
       this.config.values.backgroundColor as string,
     );
     if (this.cachedBackgroundColor) {
-      this.gl.uniform3f(
+      this.glContext.uniform3f(
         this.backgroundColorLocation,
         this.cachedBackgroundColor.r,
         this.cachedBackgroundColor.g,
@@ -345,100 +337,46 @@ export class ParticleSystem {
     }
   }
 
-  setupEventListeners() {
-    this.canvas.addEventListener('mousedown', (evt) => {
-      this.isMouseDown = true;
-      this.mouseDownPosition = new Vector2(
-        this.gl.canvas.width * (evt.x / this.canvas.clientWidth),
-        this.gl.canvas.height -
-          this.gl.canvas.height * (evt.y / this.canvas.clientHeight),
-      );
-      this.forceCenter = this.mouseDownPosition;
-      this.isForceApplied = true;
-    });
-
-    this.canvas.addEventListener('mousemove', (evt) => {
-      this.mouseDownPosition = new Vector2(
-        this.gl.canvas.width * (evt.x / this.canvas.clientWidth),
-        this.gl.canvas.height -
-          this.gl.canvas.height * (evt.y / this.canvas.clientHeight),
-      );
-      if (this.isMouseDown) this.forceCenter = this.mouseDownPosition;
-    });
-
-    document.addEventListener('mouseup', () => {
-      this.isMouseDown = false;
-      this.isForceApplied = false;
-    });
-
-    document.addEventListener('keydown', (evt) => {
-      if (document.activeElement?.getAttribute('type') === 'text') return;
-
-      if (evt.key === 'c') {
-        if (!this.isForceApplied) {
-          this.forceCenter = new Vector2(
-            this.gl.canvas.width / 2,
-            this.gl.canvas.height / 2,
-          );
-          this.isForceApplied = true;
-        }
-      } else if (evt.key === 'X') {
-        this.Module.explosion(
-          this.mouseDownPosition.x,
-          this.mouseDownPosition.y,
-          5,
-        );
-      } else if (evt.key === 'x') {
-        this.Module.explosion(
-          this.gl.canvas.width / 2,
-          this.gl.canvas.height / 2,
-          5,
-        );
-      } else if (evt.key === 'r') {
-        this.Module.respawn(
-          this.gl.canvas.width / 2,
-          this.gl.canvas.height / 2,
-          this.config.values.spawnRadius as number,
-          0.01,
-        );
-      } else if (evt.key === 'e') {
-        this.Module.spawnEmpty(
-          this.gl.canvas.width / 2,
-          this.gl.canvas.height / 2,
-          this.config.values.spawnRadius as number,
-          10,
-          5,
-        );
-      } else if (evt.key === 's') {
-        this.Module.stop();
-      } else if (evt.key === 'p') {
-        this.isPaused = !this.isPaused;
-        if (!this.isPaused)
-          this.animFrameId = requestAnimationFrame(this.render.bind(this));
-      } else if (evt.key === 'd') {
-        this.Module.deleteHeavyParticles();
-      } else if (parseInt(evt.key)) {
-        this.Module.createHeavyParticles(
-          parseInt(evt.key),
-          this.gl.canvas.width,
-          this.gl.canvas.height,
-        );
-      }
-    });
-
-    document.addEventListener('keyup', (evt) => {
-      if (document.activeElement?.getAttribute('type') === 'text') return;
-      if (evt.key === 'c') this.isForceApplied = false;
-    });
-
-    if (this.config.values.enableMotionBlur) {
-      this.clearColors(this.config.values.particleColor as string);
-    }
+  respawn() {
+    this.wasmModule.respawn(
+      this.glContext.canvas.width / 2,
+      this.glContext.canvas.height / 2,
+      this.config.values.spawnRadius as number,
+      0.01,
+    );
   }
 
-  render() {
-    this.stats.begin();
+  spawnRing() {
+    this.wasmModule.spawnEmpty(
+      this.glContext.canvas.width / 2,
+      this.glContext.canvas.height / 2,
+      this.config.values.spawnRadius as number,
+      10,
+      5,
+    );
+  }
 
+  explodeAt(x: number, y: number) {
+    this.wasmModule.explosion(x, y, 5);
+  }
+
+  freeze() {
+    this.wasmModule.stop();
+  }
+
+  createHeavyParticles(num: number) {
+    this.wasmModule.createHeavyParticles(
+      num,
+      this.glContext.canvas.width,
+      this.glContext.canvas.height,
+    );
+  }
+
+  deleteHeavyParticles() {
+    this.wasmModule.deleteHeavyParticles();
+  }
+
+  render(forceCenter?: Vector2) {
     let deltaTime = (Date.now() - this.startTime) / 1000;
     if (deltaTime === 0) deltaTime = 0.001;
     if (deltaTime > 1 / 6) deltaTime = 1 / 60;
@@ -446,26 +384,26 @@ export class ParticleSystem {
 
     if (this.config.values.enableMotionBlur) {
       this.drawTriangles();
-      this.gl.useProgram(this.particleProgram);
+      this.glContext.useProgram(this.particleProgram);
     } else {
       if (this.cachedBackgroundColor) {
-        this.gl.clearColor(
+        this.glContext.clearColor(
           this.cachedBackgroundColor.r,
           this.cachedBackgroundColor.g,
           this.cachedBackgroundColor.b,
           1.0,
         );
       }
-      this.gl.clear(this.gl.COLOR_BUFFER_BIT);
+      this.glContext.clear(this.glContext.COLOR_BUFFER_BIT);
     }
 
-    this.particlesCoordinates = this.Module.calcCoordinates(
-      this.gl.canvas.width,
-      this.gl.canvas.height,
+    const particlesCoordinates = this.wasmModule.calcCoordinates(
+      this.glContext.canvas.width,
+      this.glContext.canvas.height,
       this.config.values.particleSize as number,
-      this.isForceApplied,
-      this.forceCenter.x,
-      this.forceCenter.y,
+      !!forceCenter,
+      forceCenter?.x ?? 0,
+      forceCenter?.y ?? 0,
       deltaTime,
       Boolean(this.config.values.bounceX),
       Boolean(this.config.values.bounceY),
@@ -473,35 +411,25 @@ export class ParticleSystem {
     );
 
     if (this.config.values.enableMotionBlur) {
-      this.gl.bindVertexArray(this.particlesVao);
+      this.glContext.bindVertexArray(this.particlesVao);
     }
 
-    if (!this.particlesCoordinates) {
-      return;
-    }
-
-    this.gl.bufferData(
-      this.gl.ARRAY_BUFFER,
-      this.particlesCoordinates,
-      this.gl.DYNAMIC_DRAW,
+    this.glContext.bufferData(
+      this.glContext.ARRAY_BUFFER,
+      particlesCoordinates,
+      this.glContext.DYNAMIC_DRAW,
     );
-    this.gl.drawArrays(this.gl.POINTS, 0, this.particlesNum);
+    this.glContext.drawArrays(this.glContext.POINTS, 0, this.particlesNum);
 
     if (this.config.values.party) {
       const t = Date.now() / 250;
       const s = Math.sin(t);
-      this.gl.uniform3f(
+      this.glContext.uniform3f(
         this.coefficientsLocation,
         (s + 1) / 4 + 1 / 4,
         (-s + 1) / 4 + 1 / 4,
         (-Math.cos(t) + 1) / 4 + 1 / 4,
       );
-    }
-
-    this.stats.end();
-
-    if (!this.isPaused) {
-      this.animFrameId = requestAnimationFrame(this.render.bind(this));
     }
   }
 
@@ -516,7 +444,6 @@ export class ParticleSystem {
   }
 
   destroy() {
-    if (this.animFrameId) cancelAnimationFrame(this.animFrameId);
     this.config.gui.destroy();
   }
 }
