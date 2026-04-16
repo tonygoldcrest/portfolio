@@ -1,11 +1,8 @@
-import {
-  createShader,
-  createProgram,
-  hexToRgb,
-  getDefaultAppConfig,
-} from './helpers.js';
+import { hexToRgb, getDefaultAppConfig } from './helpers.js';
 import { Vector2 } from './classes.js';
 import type { MainModule } from './wasm.js';
+import { GlProgram } from './gl-program.js';
+import type AppConfig from '@/projects/particle-system-webgl/modules/config.js';
 
 export interface WasmModule extends EmscriptenModule, MainModule {
   calcCoordinates(
@@ -27,41 +24,41 @@ import particleFragmentSrc from './shaders/particle.fragment.glsl?raw';
 import triangleVertexSrc from './shaders/triangle.vertex.glsl?raw';
 import triangleFragmentSrc from './shaders/triangle.fragment.glsl?raw';
 
+type ParticleUniforms =
+  | 'uPointSize'
+  | 'uReadFromTexture'
+  | 'uCoefficients'
+  | 'uOpacity'
+  | 'uColor';
+type TriangleUniforms = 'uBackground';
+
 export class ParticleSystem {
-  particleProgram: WebGLProgram | null = null;
   positionBuffer?: WebGLBuffer;
   triangleBuffer?: WebGLBuffer;
-  triangleProgram: WebGLProgram | null = null;
   cachedBackgroundColor: { r: number; g: number; b: number } | null = null;
-  particlePositionAttributeLocation?: GLint;
-  trianglePositionAttributeLocation?: GLint;
-  pointSizeLocation?: WebGLUniformLocation | null = null;
-  particleColorLocation: WebGLUniformLocation | null = null;
-  coefficientsLocation: WebGLUniformLocation | null = null;
-  particleOpacityLocation: WebGLUniformLocation | null = null;
-  backgroundColorLocation: WebGLUniformLocation | null = null;
-  readFromTextureLocation: WebGLUniformLocation | null = null;
-  particlesVao: WebGLVertexArrayObject | null = null;
-  trianglesVao: WebGLVertexArrayObject | null = null;
   startTime = Date.now();
 
   glContext: WebGL2RenderingContext;
-  config = getDefaultAppConfig(this);
+  config: AppConfig;
   triangles = new Float32Array([-1, -1, -1, 1, 1, 1, 1, 1, 1, -1, -1, -1]);
-  particlesNum = this.config.values.particlesNum as number;
+  particlesNum: number;
   wasmModule: WasmModule;
+
+  particleProgram: GlProgram<ParticleUniforms> | null = null;
+  triangleProgram: GlProgram<TriangleUniforms> | null = null;
 
   constructor(glContext: WebGL2RenderingContext, wasmModule: WasmModule) {
     this.wasmModule = wasmModule;
-
     this.glContext = glContext;
+
+    this.config = getDefaultAppConfig(this);
+    this.particlesNum = this.config.values.particlesNum as number;
 
     this.setupGl();
     this.setupParticleProgram();
 
     if (this.config.values.enableMotionBlur) {
       this.setupTriangleProgram();
-
       this.glContext.bindBuffer(
         this.glContext.ARRAY_BUFFER,
         this.positionBuffer!,
@@ -86,13 +83,101 @@ export class ParticleSystem {
     );
     this.glContext.enable(this.glContext.BLEND);
     this.glContext.disable(this.glContext.DEPTH_TEST);
-
     this.glContext.viewport(
       0,
       0,
       this.glContext.canvas.width,
       this.glContext.canvas.height,
     );
+  }
+
+  setupParticleProgram() {
+    this.particleProgram = new GlProgram(
+      this.glContext,
+      particleVertexSrc,
+      particleFragmentSrc,
+      ['uPointSize', 'uReadFromTexture', 'uCoefficients', 'uOpacity', 'uColor'],
+    );
+
+    this.particleProgram.use();
+
+    const posAttr = this.glContext.getAttribLocation(
+      this.particleProgram.program,
+      'aPosition',
+    );
+    this.glContext.enableVertexAttribArray(posAttr);
+    this.glContext.vertexAttribPointer(
+      posAttr,
+      2,
+      this.glContext.FLOAT,
+      false,
+      2 * Float32Array.BYTES_PER_ELEMENT,
+      0,
+    );
+
+    const { uPointSize, uOpacity, uColor, uCoefficients } =
+      this.particleProgram.uniforms;
+
+    this.glContext.uniform1f(
+      uPointSize,
+      this.config.values.particleSize as number,
+    );
+    this.glContext.uniform1f(
+      uOpacity,
+      this.config.values.particleOpacity as number,
+    );
+
+    const colorRgb = hexToRgb(this.config.values.particleColor as string);
+    if (colorRgb) {
+      this.glContext.uniform3f(uColor, colorRgb.r, colorRgb.g, colorRgb.b);
+    }
+
+    this.glContext.uniform3f(uCoefficients, 1, 1, 1);
+  }
+
+  setupTriangleProgram() {
+    this.triangleProgram = new GlProgram(
+      this.glContext,
+      triangleVertexSrc,
+      triangleFragmentSrc,
+      ['uBackground'],
+    );
+
+    this.triangleProgram.use();
+
+    this.triangleBuffer = this.glContext.createBuffer()!;
+    this.glContext.bindBuffer(this.glContext.ARRAY_BUFFER, this.triangleBuffer);
+    this.glContext.bufferData(
+      this.glContext.ARRAY_BUFFER,
+      this.triangles,
+      this.glContext.STATIC_DRAW,
+    );
+
+    const posAttr = this.glContext.getAttribLocation(
+      this.triangleProgram.program,
+      'aPosition',
+    );
+    this.glContext.vertexAttribPointer(
+      posAttr,
+      2,
+      this.glContext.FLOAT,
+      false,
+      0,
+      0,
+    );
+    this.glContext.enableVertexAttribArray(posAttr);
+
+    this.cachedBackgroundColor = hexToRgb(
+      this.config.values.backgroundColor as string,
+    );
+    if (this.cachedBackgroundColor) {
+      this.glContext.uniform3f(
+        this.triangleProgram.uniforms.uBackground,
+        this.cachedBackgroundColor.r,
+        this.cachedBackgroundColor.g,
+        this.cachedBackgroundColor.b,
+      );
+    }
   }
 
   createParticles(N: number) {
@@ -110,12 +195,11 @@ export class ParticleSystem {
   }
 
   drawTriangles() {
-    if (!this.triangleProgram || !this.trianglesVao) {
+    if (!this.triangleProgram) {
       return;
     }
 
-    this.glContext.useProgram(this.triangleProgram);
-    this.glContext.bindVertexArray(this.trianglesVao);
+    this.triangleProgram.use();
     this.glContext.drawArrays(this.glContext.TRIANGLES, 0, 6);
   }
 
@@ -126,109 +210,23 @@ export class ParticleSystem {
     }
     this.glContext.clearColor(colorRgb.r, colorRgb.g, colorRgb.b, 1);
     this.glContext.clear(this.glContext.COLOR_BUFFER_BIT);
-    for (let i = 0; i < 40; i++) this.drawTriangles();
-  }
-
-  setupParticleProgram() {
-    const particleVertexShader = createShader(
-      this.glContext,
-      this.glContext.VERTEX_SHADER,
-      particleVertexSrc,
-    );
-    const particleFragmentShader = createShader(
-      this.glContext,
-      this.glContext.FRAGMENT_SHADER,
-      particleFragmentSrc,
-    );
-
-    if (!particleVertexShader || !particleFragmentShader) {
-      return;
+    for (let i = 0; i < 40; i++) {
+      this.drawTriangles();
     }
-
-    this.particleProgram = createProgram(
-      this.glContext,
-      particleVertexShader,
-      particleFragmentShader,
-    );
-
-    if (!this.particleProgram) {
-      return;
-    }
-
-    this.pointSizeLocation = this.glContext.getUniformLocation(
-      this.particleProgram,
-      'uPointSize',
-    );
-    this.readFromTextureLocation = this.glContext.getUniformLocation(
-      this.particleProgram,
-      'uReadFromTexture',
-    );
-    this.coefficientsLocation = this.glContext.getUniformLocation(
-      this.particleProgram,
-      'uCoefficients',
-    );
-    this.particleOpacityLocation = this.glContext.getUniformLocation(
-      this.particleProgram,
-      'uOpacity',
-    );
-    this.particleColorLocation = this.glContext.getUniformLocation(
-      this.particleProgram,
-      'uColor',
-    );
-
-    this.particlesVao = this.glContext.createVertexArray();
-    this.glContext.bindVertexArray(this.particlesVao);
-
-    this.particlePositionAttributeLocation = this.glContext.getAttribLocation(
-      this.particleProgram,
-      'aPosition',
-    );
-    this.glContext.enableVertexAttribArray(
-      this.particlePositionAttributeLocation,
-    );
-    this.glContext.vertexAttribPointer(
-      this.particlePositionAttributeLocation,
-      2,
-      this.glContext.FLOAT,
-      false,
-      2 * Float32Array.BYTES_PER_ELEMENT,
-      0,
-    );
-
-    this.glContext.useProgram(this.particleProgram);
-    this.glContext.uniform1f(
-      this.pointSizeLocation,
-      this.config.values.particleSize as number,
-    );
-    this.glContext.uniform1f(
-      this.particleOpacityLocation,
-      this.config.values.particleOpacity as number,
-    );
-    const particleColorRgb = hexToRgb(
-      this.config.values.particleColor as string,
-    );
-    if (particleColorRgb) {
-      this.glContext.uniform3f(
-        this.particleColorLocation,
-        particleColorRgb.r,
-        particleColorRgb.g,
-        particleColorRgb.b,
-      );
-    }
-    this.glContext.uniform3f(this.coefficientsLocation, 1, 1, 1);
   }
 
   loadImage(image: TexImageSource) {
     if (!this.particleProgram) {
       return;
     }
-    this.glContext.useProgram(this.particleProgram);
+
+    this.glContext.useProgram(this.particleProgram.program);
     const imageLocation = this.glContext.getUniformLocation(
-      this.particleProgram,
+      this.particleProgram.program,
       'uImage',
     );
     const texture = this.glContext.createTexture();
-    this.glContext.activeTexture(this.glContext.TEXTURE0 + 0);
+    this.glContext.activeTexture(this.glContext.TEXTURE0);
     this.glContext.bindTexture(this.glContext.TEXTURE_2D, texture);
     this.glContext.texParameteri(
       this.glContext.TEXTURE_2D,
@@ -259,82 +257,6 @@ export class ParticleSystem {
       image,
     );
     this.glContext.uniform1i(imageLocation, 0);
-  }
-
-  setupTriangleProgram() {
-    const triangleVertexShader = createShader(
-      this.glContext,
-      this.glContext.VERTEX_SHADER,
-      triangleVertexSrc,
-    );
-    const triangleFragmentShader = createShader(
-      this.glContext,
-      this.glContext.FRAGMENT_SHADER,
-      triangleFragmentSrc,
-    );
-    if (!triangleVertexShader || !triangleFragmentShader) {
-      return;
-    }
-
-    this.triangleProgram = createProgram(
-      this.glContext,
-      triangleVertexShader,
-      triangleFragmentShader,
-    );
-
-    if (!this.triangleProgram) {
-      return;
-    }
-
-    this.glContext.useProgram(this.triangleProgram);
-
-    this.trianglesVao = this.glContext.createVertexArray();
-    this.glContext.bindVertexArray(this.trianglesVao);
-
-    this.triangleBuffer = this.glContext.createBuffer()!;
-    this.glContext.bindBuffer(this.glContext.ARRAY_BUFFER, this.triangleBuffer);
-    this.glContext.bufferData(
-      this.glContext.ARRAY_BUFFER,
-      this.triangles,
-      this.glContext.STATIC_DRAW,
-    );
-
-    this.backgroundColorLocation = this.glContext.getUniformLocation(
-      this.triangleProgram,
-      'uBackground',
-    );
-    this.trianglePositionAttributeLocation = this.glContext.getAttribLocation(
-      this.triangleProgram,
-      'aPosition',
-    );
-    this.glContext.vertexAttribPointer(
-      this.trianglePositionAttributeLocation,
-      2,
-      this.glContext.FLOAT,
-      false,
-      0,
-      0,
-    );
-    this.glContext.enableVertexAttribArray(
-      this.trianglePositionAttributeLocation,
-    );
-    this.glContext.bufferData(
-      this.glContext.ARRAY_BUFFER,
-      this.triangles,
-      this.glContext.STATIC_DRAW,
-    );
-
-    this.cachedBackgroundColor = hexToRgb(
-      this.config.values.backgroundColor as string,
-    );
-    if (this.cachedBackgroundColor) {
-      this.glContext.uniform3f(
-        this.backgroundColorLocation,
-        this.cachedBackgroundColor.r,
-        this.cachedBackgroundColor.g,
-        this.cachedBackgroundColor.b,
-      );
-    }
   }
 
   respawn() {
@@ -378,13 +300,20 @@ export class ParticleSystem {
 
   render(forceCenter?: Vector2) {
     let deltaTime = (Date.now() - this.startTime) / 1000;
-    if (deltaTime === 0) deltaTime = 0.001;
-    if (deltaTime > 1 / 6) deltaTime = 1 / 60;
+
+    if (deltaTime === 0) {
+      deltaTime = 0.001;
+    }
+
+    if (deltaTime > 1 / 6) {
+      deltaTime = 1 / 60;
+    }
+
     this.startTime = Date.now();
 
     if (this.config.values.enableMotionBlur) {
       this.drawTriangles();
-      this.glContext.useProgram(this.particleProgram);
+      this.glContext.useProgram(this.particleProgram?.program ?? null);
     } else {
       if (this.cachedBackgroundColor) {
         this.glContext.clearColor(
@@ -410,8 +339,12 @@ export class ParticleSystem {
       Boolean(this.config.values.squared),
     );
 
+    if (!particlesCoordinates) {
+      return;
+    }
+
     if (this.config.values.enableMotionBlur) {
-      this.glContext.bindVertexArray(this.particlesVao);
+      this.glContext.bindVertexArray(this.particleProgram?.vao ?? null);
     }
 
     this.glContext.bufferData(
@@ -425,7 +358,7 @@ export class ParticleSystem {
       const t = Date.now() / 250;
       const s = Math.sin(t);
       this.glContext.uniform3f(
-        this.coefficientsLocation,
+        this.particleProgram?.uniforms.uCoefficients ?? null,
         (s + 1) / 4 + 1 / 4,
         (-s + 1) / 4 + 1 / 4,
         (-Math.cos(t) + 1) / 4 + 1 / 4,
@@ -445,5 +378,9 @@ export class ParticleSystem {
 
   destroy() {
     this.config.gui.destroy();
+    this.particleProgram?.destroy();
+    this.triangleProgram?.destroy();
+    this.glContext.deleteBuffer(this.positionBuffer ?? null);
+    this.glContext.deleteBuffer(this.triangleBuffer ?? null);
   }
 }

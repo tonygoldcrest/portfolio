@@ -54,41 +54,76 @@ function loadWasm() {
 
 export default function ParticleSystemWebGL() {
   const forceCenterRef = useRef<Vector2 | undefined>(undefined);
+  const mousePositionRef = useRef<Vector2 | undefined>(undefined);
+  const isPausedRef = useRef(false);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const appRef = useRef<ParticleSystem | null>(null);
   const rafRef = useRef<number>(null);
-  const statsRef = useRef(new Stats());
+  const statsRef = useRef<Stats | null>(null);
+  if (!statsRef.current) {
+    statsRef.current = new Stats();
+  }
 
   const [cheatsheetOpen, setCheatsheetOpen] = useState(false);
 
-  function mouseMoveHandler(evt: MouseEvent) {
-    if (!canvasRef.current) {
+  const renderFrame = useCallback(function renderFrame() {
+    if (!appRef.current) {
       return;
     }
 
-    const canvas = canvasRef.current;
+    statsRef.current?.begin();
+    appRef.current.render(forceCenterRef.current);
+    statsRef.current?.end();
 
-    forceCenterRef.current = new Vector2(
-      canvas.width * (evt.x / canvas.clientWidth),
-      canvas.height - canvas.height * (evt.y / canvas.clientHeight),
-    );
-  }
-
-  const mouseDownHandler = useCallback((evt: MouseEvent) => {
-    if (!canvasRef.current) {
-      return;
+    if (!isPausedRef.current) {
+      rafRef.current = requestAnimationFrame(renderFrame);
     }
-
-    const canvas = canvasRef.current;
-
-    forceCenterRef.current = new Vector2(
-      canvas.width * (evt.x / canvas.clientWidth),
-      canvas.height - canvas.height * (evt.y / canvas.clientHeight),
-    );
-
-    canvas.addEventListener('mousemove', mouseMoveHandler);
   }, []);
+
+  const mouseMoveHandler = useCallback((evt: MouseEvent) => {
+    if (!canvasRef.current) {
+      return;
+    }
+
+    const canvas = canvasRef.current;
+
+    mousePositionRef.current = new Vector2(
+      canvas.width * (evt.x / canvas.clientWidth),
+      canvas.height - canvas.height * (evt.y / canvas.clientHeight),
+    );
+  }, []);
+
+  const mouseDownMoveHandler = useCallback((evt: MouseEvent) => {
+    if (!canvasRef.current) {
+      return;
+    }
+
+    const canvas = canvasRef.current;
+
+    forceCenterRef.current = new Vector2(
+      canvas.width * (evt.x / canvas.clientWidth),
+      canvas.height - canvas.height * (evt.y / canvas.clientHeight),
+    );
+  }, []);
+
+  const mouseDownHandler = useCallback(
+    (evt: MouseEvent) => {
+      if (!canvasRef.current) {
+        return;
+      }
+
+      const canvas = canvasRef.current;
+
+      forceCenterRef.current = new Vector2(
+        canvas.width * (evt.x / canvas.clientWidth),
+        canvas.height - canvas.height * (evt.y / canvas.clientHeight),
+      );
+
+      canvas.addEventListener('mousemove', mouseDownMoveHandler);
+    },
+    [mouseDownMoveHandler],
+  );
 
   const mouseUpHandler = useCallback(() => {
     if (!canvasRef.current) {
@@ -97,43 +132,51 @@ export default function ParticleSystemWebGL() {
 
     const canvas = canvasRef.current;
 
-    canvas.removeEventListener('mousemove', mouseMoveHandler);
+    canvas.removeEventListener('mousemove', mouseDownMoveHandler);
     forceCenterRef.current = undefined;
-  }, []);
+  }, [mouseDownMoveHandler]);
 
-  const keydownHandler = useCallback((evt: KeyboardEvent) => {
-    if (!canvasRef.current || !appRef.current) {
-      return;
-    }
+  const keydownHandler = useCallback(
+    (evt: KeyboardEvent) => {
+      if (!canvasRef.current || !appRef.current) {
+        return;
+      }
 
-    const canvas = canvasRef.current;
-    const app = appRef.current;
+      const canvas = canvasRef.current;
+      const app = appRef.current;
 
-    if (document.activeElement?.getAttribute('type') === 'text') return;
+      if (document.activeElement?.getAttribute('type') === 'text') return;
 
-    if (evt.key === 'c') {
-      forceCenterRef.current = new Vector2(canvas.width / 2, canvas.height / 2);
-    } else if (evt.key === 'X') {
-      // app.explodeAt(app.mouseDownPosition.x, app.mouseDownPosition.y);
-    } else if (evt.key === 'x') {
-      app.explodeAt(canvas.width / 2, canvas.height / 2);
-    } else if (evt.key === 'r') {
-      app.respawn();
-    } else if (evt.key === 'e') {
-      app.spawnRing();
-    } else if (evt.key === 's') {
-      app.freeze();
-    } else if (evt.key === 'p') {
-      // pause
-      // app.isPaused = !app.isPaused;
-      // if (!app.isPaused)
-      //   app.animFrameId = requestAnimationFrame(app.render.bind(app));
-    } else if (evt.key === 'd') {
-      app.deleteHeavyParticles();
-    } else if (parseInt(evt.key)) {
-      app.createHeavyParticles(parseInt(evt.key));
-    }
-  }, []);
+      if (evt.key === 'c') {
+        forceCenterRef.current = new Vector2(
+          canvas.width / 2,
+          canvas.height / 2,
+        );
+      } else if (evt.key === 'X') {
+        if (mousePositionRef.current) {
+          app.explodeAt(mousePositionRef.current.x, mousePositionRef.current.y);
+        }
+      } else if (evt.key === 'x') {
+        app.explodeAt(canvas.width / 2, canvas.height / 2);
+      } else if (evt.key === 'r') {
+        app.respawn();
+      } else if (evt.key === 'e') {
+        app.spawnRing();
+      } else if (evt.key === 's') {
+        app.freeze();
+      } else if (evt.key === 'p') {
+        isPausedRef.current = !isPausedRef.current;
+        if (!isPausedRef.current) {
+          rafRef.current = requestAnimationFrame(renderFrame);
+        }
+      } else if (evt.key === 'd') {
+        app.deleteHeavyParticles();
+      } else if (parseInt(evt.key)) {
+        app.createHeavyParticles(parseInt(evt.key));
+      }
+    },
+    [renderFrame],
+  );
 
   const keyupHandler = useCallback((evt: KeyboardEvent) => {
     if (document.activeElement?.getAttribute('type') === 'text') return;
@@ -150,6 +193,7 @@ export default function ParticleSystemWebGL() {
 
     const canvas = canvasRef.current;
 
+    canvas.addEventListener('mousemove', mouseMoveHandler);
     canvas.addEventListener('mousedown', mouseDownHandler);
 
     document.addEventListener('mouseup', mouseUpHandler);
@@ -157,19 +201,13 @@ export default function ParticleSystemWebGL() {
     document.addEventListener('keydown', keydownHandler);
 
     document.addEventListener('keyup', keyupHandler);
-  }, [mouseDownHandler, mouseUpHandler, keydownHandler, keyupHandler]);
-
-  const renderFrame = useCallback(function renderFrame() {
-    if (!appRef.current) {
-      return;
-    }
-
-    statsRef.current.begin();
-    appRef.current.render(forceCenterRef.current);
-    statsRef.current.end();
-
-    rafRef.current = requestAnimationFrame(renderFrame);
-  }, []);
+  }, [
+    mouseMoveHandler,
+    mouseDownHandler,
+    mouseUpHandler,
+    keydownHandler,
+    keyupHandler,
+  ]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -193,8 +231,11 @@ export default function ParticleSystemWebGL() {
       }
 
       resizeCanvasToDisplaySize(canvas, 2);
-      statsRef.current.showPanel(0);
-      canvas.parentElement?.appendChild(statsRef.current.dom);
+      statsRef.current?.showPanel(0);
+
+      if (statsRef.current) {
+        canvas.parentElement?.appendChild(statsRef.current.dom);
+      }
 
       appRef.current = new ParticleSystem(glContext, wasmModule);
 
@@ -209,8 +250,11 @@ export default function ParticleSystemWebGL() {
       cancelled = true;
       appRef.current?.destroy();
       appRef.current = null;
+      statsRef.current?.dom.remove();
 
+      canvas.removeEventListener('mousemove', mouseMoveHandler);
       canvas.removeEventListener('mousedown', mouseDownHandler);
+      canvas.removeEventListener('mousemove', mouseDownMoveHandler);
       document.removeEventListener('mouseup', mouseUpHandler);
       document.removeEventListener('keydown', keydownHandler);
       document.removeEventListener('keyup', keyupHandler);
@@ -221,7 +265,9 @@ export default function ParticleSystemWebGL() {
     };
   }, [
     setupEventListeners,
+    mouseMoveHandler,
     mouseDownHandler,
+    mouseDownMoveHandler,
     mouseUpHandler,
     keydownHandler,
     keyupHandler,

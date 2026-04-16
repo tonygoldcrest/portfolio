@@ -1,56 +1,6 @@
 import type { ParticleSystem } from '@/projects/particle-system-webgl';
 import AppConfig from '@/projects/particle-system-webgl/modules/config';
 
-export function createShader(
-  gl: WebGL2RenderingContext,
-  type: GLenum,
-  source: string,
-) {
-  const shader = gl.createShader(type);
-
-  if (!shader) {
-    return;
-  }
-
-  gl.shaderSource(shader, source);
-  gl.compileShader(shader);
-
-  const success = gl.getShaderParameter(shader, gl.COMPILE_STATUS);
-
-  if (success) {
-    return shader;
-  }
-
-  console.log(gl.getShaderInfoLog(shader));
-  gl.deleteShader(shader);
-
-  return null;
-}
-
-export function createProgram(
-  gl: WebGL2RenderingContext,
-  vertexShader: WebGLShader,
-  fragmentShader: WebGLShader,
-) {
-  const program = gl.createProgram();
-
-  gl.attachShader(program, vertexShader);
-  gl.attachShader(program, fragmentShader);
-
-  gl.linkProgram(program);
-
-  const success = gl.getProgramParameter(program, gl.LINK_STATUS);
-
-  if (success) {
-    return program;
-  }
-
-  console.log(gl.getProgramInfoLog(program));
-  gl.deleteProgram(program);
-
-  return null;
-}
-
 export function normalize(a: number, b: number, magnitude: number) {
   return (a * magnitude) / Math.sqrt(a * a + b * b);
 }
@@ -109,12 +59,14 @@ export function getDefaultAppConfig(ps: ParticleSystem) {
       gui: {
         type: 'bool',
         onChange: (newValue) => {
-          if (!ps.particleProgram || !ps.readFromTextureLocation) {
+          if (!ps.particleProgram) {
             return;
           }
-
-          ps.glContext.useProgram(ps.particleProgram);
-          ps.glContext.uniform1f(ps.readFromTextureLocation, newValue ? 1 : 0);
+          ps.glContext.useProgram(ps.particleProgram.program);
+          ps.glContext.uniform1f(
+            ps.particleProgram.uniforms.uReadFromTexture,
+            newValue ? 1 : 0,
+          );
         },
         onChangeFunc: 'onChange',
       },
@@ -124,12 +76,16 @@ export function getDefaultAppConfig(ps: ParticleSystem) {
       gui: {
         type: 'bool',
         onChange: (newValue) => {
-          if (!ps.coefficientsLocation) {
+          if (!ps.particleProgram) {
             return;
           }
-
           if (!newValue) {
-            ps.glContext.uniform3f(ps.coefficientsLocation, 1, 1, 1);
+            ps.glContext.uniform3f(
+              ps.particleProgram.uniforms.uCoefficients,
+              1,
+              1,
+              1,
+            );
           }
         },
         onChangeFunc: 'onChange',
@@ -159,11 +115,13 @@ export function getDefaultAppConfig(ps: ParticleSystem) {
         to: 100,
         step: 1,
         onChange: (newValue) => {
-          if (!ps.pointSizeLocation) {
+          if (!ps.particleProgram) {
             return;
           }
-
-          ps.glContext.uniform1f(ps.pointSizeLocation, newValue as number);
+          ps.glContext.uniform1f(
+            ps.particleProgram.uniforms.uPointSize,
+            newValue as number,
+          );
         },
         onChangeFunc: 'onChange',
       },
@@ -180,12 +138,11 @@ export function getDefaultAppConfig(ps: ParticleSystem) {
         to: 1,
         step: 0.01,
         onChange: (newValue) => {
-          if (!ps.particleOpacityLocation) {
+          if (!ps.particleProgram) {
             return;
           }
-
           ps.glContext.uniform1f(
-            ps.particleOpacityLocation,
+            ps.particleProgram.uniforms.uOpacity,
             newValue as number,
           );
         },
@@ -223,21 +180,19 @@ export function getDefaultAppConfig(ps: ParticleSystem) {
       gui: {
         type: 'color',
         onChange: (newValue) => {
-          if (!ps.particleProgram || !ps.particleColorLocation) {
+          if (!ps.particleProgram) {
             return;
           }
-          const particleColorRgb = hexToRgb(newValue as string);
-
-          if (!particleColorRgb) {
+          const colorRgb = hexToRgb(newValue as string);
+          if (!colorRgb) {
             return;
           }
-
-          ps.glContext.useProgram(ps.particleProgram);
+          ps.glContext.useProgram(ps.particleProgram.program);
           ps.glContext.uniform3f(
-            ps.particleColorLocation,
-            particleColorRgb.r,
-            particleColorRgb.g,
-            particleColorRgb.b,
+            ps.particleProgram.uniforms.uColor,
+            colorRgb.r,
+            colorRgb.g,
+            colorRgb.b,
           );
           ps.clearColors(newValue as string);
         },
@@ -249,20 +204,17 @@ export function getDefaultAppConfig(ps: ParticleSystem) {
       gui: {
         type: 'color',
         onChange: (newValue) => {
-          if (!ps.triangleProgram || !ps.backgroundColorLocation) {
+          if (!ps.triangleProgram) {
             return;
           }
-
           const backgroundColorRgb = hexToRgb(newValue as string);
-
           if (!backgroundColorRgb) {
             return;
           }
-
           ps.cachedBackgroundColor = backgroundColorRgb;
-          ps.glContext.useProgram(ps.triangleProgram);
+          ps.glContext.useProgram(ps.triangleProgram.program);
           ps.glContext.uniform3f(
-            ps.backgroundColorLocation,
+            ps.triangleProgram.uniforms.uBackground,
             backgroundColorRgb.r,
             backgroundColorRgb.g,
             backgroundColorRgb.b,

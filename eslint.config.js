@@ -25,6 +25,7 @@ export default defineConfig([
     },
     rules: {
       'prettier/prettier': 'error',
+      curly: ['error', 'all'],
     },
   },
   {
