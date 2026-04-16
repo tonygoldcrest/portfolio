@@ -12,7 +12,10 @@ export default function App() {
         <Route element={<Layout />}>
           <Route path="/" element={<Home />} />
         </Route>
-        <Route path="/particle-system-webgl" element={<ParticleSystemWebGL />} />
+        <Route
+          path="/particle-system-webgl"
+          element={<ParticleSystemWebGL />}
+        />
         <Route path="/game-of-life" element={<GameOfLife />} />
         <Route path="/ecosystem-sim" element={<EcosystemSim />} />
       </Routes>

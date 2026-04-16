@@ -1,7 +1,7 @@
-import { hexToRgb } from './helpers.js';
-import { Vector2 } from './classes.js';
-import type { MainModule } from './wasm.js';
-import { GlProgram } from './gl-program.js';
+import { hexToRgb } from './helpers';
+import { Vector2 } from './classes';
+import type { MainModule } from './wasm';
+import { GlProgram } from './gl-program';
 
 export interface WasmModule extends EmscriptenModule, MainModule {
   calcCoordinates(

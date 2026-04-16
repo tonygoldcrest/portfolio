@@ -1,12 +1,9 @@
 import Stats from 'stats.js';
 import { useCallback, useEffect, useRef } from 'react';
 import { useControls } from 'leva';
-import {
-  ParticleSystem,
-  type WasmModule,
-} from '@/projects/particle-system-webgl/index.js';
-import { resizeCanvasToDisplaySize } from '@/projects/particle-system-webgl/helpers';
-import { Vector2 } from '@/projects/particle-system-webgl/classes';
+import { ParticleSystem, type WasmModule } from './ParticleSystem';
+import { resizeCanvasToDisplaySize } from './helpers';
+import { Vector2 } from './classes';
 
 declare global {
   interface Window {
@@ -66,7 +63,7 @@ export function useParticleSystem() {
         UltraNightmare: 5_000_000,
       },
     },
-    particleSize: { value: 2, min: 1, max: 100, step: 1 },
+    particleSize: { value: 2, min: 1, max: 10, step: 1 },
     particleOpacity: { value: 0.5, min: 0, max: 1, step: 0.01 },
     spawnRadius: { value: 200, min: 20, max: 500 },
     particleColor: '#1e272e',
