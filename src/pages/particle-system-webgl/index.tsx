@@ -1,8 +1,14 @@
-import { useState } from 'react';
+import { Fragment } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faCamera, faFileImage } from '@fortawesome/free-solid-svg-icons';
+import {
+  faCamera,
+  faChevronUp,
+  faFileImage,
+} from '@fortawesome/free-solid-svg-icons';
 import styles from './particle-system-webgl.module.css';
 import { useParticleSystem } from './useParticleSystem';
+import { Accordion, Button, Kbd } from '@heroui/react';
+import { faGithub } from '@fortawesome/free-brands-svg-icons';
 
 const HOTKEYS = [
   { key: 'x', description: 'Explosion at the center of the screen' },
@@ -23,57 +29,74 @@ const HOTKEYS = [
 
 export default function ParticleSystemWebGL() {
   const { canvasRef, saveScreenshot, onImageUpload } = useParticleSystem();
-  const [cheatsheetOpen, setCheatsheetOpen] = useState(false);
 
   return (
     <div className={styles.container}>
       <canvas ref={canvasRef} className={styles.canvas} />
 
-      <div
-        className={`${styles.cheatsheet} ${cheatsheetOpen ? '' : styles.cheatsheetHidden}`}
-      >
-        <button
-          className={styles.cheatsheetToggle}
-          onClick={() => setCheatsheetOpen((o) => !o)}
-        >
-          {cheatsheetOpen ? 'Close cheatsheet' : 'Open cheatsheet'}
-        </button>
-        <div className={styles.hotkeysList}>
-          {HOTKEYS.map(({ key, description }) => (
-            <div key={key}>
-              <div className={styles.hotkey}>{key}</div>
-              <div className={styles.hotkeyDescription}>{description}</div>
-              <div className={styles.hotkeySeparator} />
-            </div>
-          ))}
-        </div>
-      </div>
+      <Accordion className="absolute bottom-3 left-5 w-80" variant="surface">
+        <Accordion.Item>
+          <Accordion.Heading>
+            <Accordion.Trigger>
+              Hotkeys
+              <Accordion.Indicator>
+                <FontAwesomeIcon icon={faChevronUp} />
+              </Accordion.Indicator>
+            </Accordion.Trigger>
+          </Accordion.Heading>
+          <Accordion.Panel>
+            <Accordion.Body className="grid grid-cols-[max-content_1fr] gap-x-2 divide-y items-center">
+              {HOTKEYS.map(({ key, description }) => (
+                <Fragment key={key}>
+                  <Kbd className="justify-self-center">{key}</Kbd>
+                  <span className="text-sm py-1">{description}</span>
+                </Fragment>
+              ))}
+            </Accordion.Body>
+          </Accordion.Panel>
+        </Accordion.Item>
+      </Accordion>
 
-      <button
-        className={`${styles.iconButton} ${styles.screenshotButton}`}
-        onClick={saveScreenshot}
-        title="Take a screenshot"
-      >
-        <FontAwesomeIcon icon={faCamera} />
-      </button>
+      <div className="flex gap-1 absolute bottom-3 right-5">
+        <Button isIconOnly variant="tertiary" onPress={saveScreenshot}>
+          <FontAwesomeIcon icon={faCamera} />
+        </Button>
+        <Button
+          isIconOnly
+          variant="tertiary"
+          onPress={() => {
+            const input = document.createElement('input');
 
-      <label
-        className={`${styles.iconButton} ${styles.uploadButton}`}
-        title="Upload image"
-      >
-        <FontAwesomeIcon icon={faFileImage} />
-        <input
-          type="file"
-          accept="image/*"
-          className={styles.fileInput}
-          onChange={(e) => {
-            const file = e.target.files?.[0];
-            if (file) {
-              onImageUpload(file);
-            }
+            input.type = 'file';
+            input.accept = 'image/*';
+
+            input.onchange = () => {
+              const file = input.files?.[0];
+              if (file) {
+                onImageUpload(file);
+              }
+              input.remove();
+            };
+
+            input.click();
           }}
-        />
-      </label>
+        >
+          <FontAwesomeIcon icon={faFileImage} />
+        </Button>
+
+        <Button
+          isIconOnly
+          variant="tertiary"
+          onPress={() =>
+            window.open(
+              'https://github.com/tonygoldcrest/portfolio/tree/main/src/pages/particle-system-webgl',
+              '_blank',
+            )
+          }
+        >
+          <FontAwesomeIcon icon={faGithub} />
+        </Button>
+      </div>
     </div>
   );
 }

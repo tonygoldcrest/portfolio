@@ -22,6 +22,7 @@ import particleVertexSrc from './shaders/particle.vertex.glsl?raw';
 import particleFragmentSrc from './shaders/particle.fragment.glsl?raw';
 import triangleVertexSrc from './shaders/triangle.vertex.glsl?raw';
 import triangleFragmentSrc from './shaders/triangle.fragment.glsl?raw';
+import { DEFAULT_PARTICLES_NUM } from '@/pages/particle-system-webgl/constants';
 
 type ParticleUniforms =
   | 'uPointSize'
@@ -39,7 +40,7 @@ export class ParticleSystem {
 
   glContext: WebGL2RenderingContext;
   triangles = new Float32Array([-1, -1, -1, 1, 1, 1, 1, 1, 1, -1, -1, -1]);
-  particlesNum = 1_000_000;
+  particlesNum = DEFAULT_PARTICLES_NUM;
   wasmModule: WasmModule;
 
   particleProgram: GlProgram<ParticleUniforms> | null = null;

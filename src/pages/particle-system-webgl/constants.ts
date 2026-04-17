@@ -1,0 +1,1 @@
+export const DEFAULT_PARTICLES_NUM = 1_000;

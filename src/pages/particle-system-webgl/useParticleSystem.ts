@@ -4,6 +4,7 @@ import { useControls } from 'leva';
 import { ParticleSystem, type WasmModule } from './ParticleSystem';
 import { resizeCanvasToDisplaySize } from './helpers';
 import { Vector2 } from './classes';
+import { DEFAULT_PARTICLES_NUM } from '@/pages/particle-system-webgl/constants';
 
 declare global {
   interface Window {
@@ -47,7 +48,7 @@ export function useParticleSystem() {
   } = useControls({
     particlesNum: {
       label: 'Particles',
-      value: 1_000_000,
+      value: DEFAULT_PARTICLES_NUM,
       options: {
         UltraLow: 1_000,
         SuperLow: 4_000,

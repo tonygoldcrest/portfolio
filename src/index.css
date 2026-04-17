@@ -1,13 +1,6 @@
+@import 'tailwindcss';
 @import '@fontsource/monaspace-neon/latin.css';
-
-:root {
-  --background: #222;
-  --foreground: #eee;
-  --muted: #444;
-  --muted-foreground: #999;
-  --border: #333;
-  --radius: 0.3rem;
-}
+@import "@heroui/styles";
 
 *,
 *::before,
