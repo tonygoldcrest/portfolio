@@ -1,10 +1,9 @@
 import Stats from 'stats.js';
 import { useCallback, useEffect, useRef } from 'react';
-import { useControls } from 'leva';
 import { ParticleSystem, type WasmModule } from './ParticleSystem';
 import { resizeCanvasToDisplaySize } from './helpers';
 import { Vector2 } from './classes';
-import { DEFAULT_PARTICLES_NUM } from '@/pages/particle-system-webgl/constants';
+import type { ParticleSystemControls } from './types';
 
 declare global {
   interface Window {
@@ -31,7 +30,7 @@ function loadWasm() {
   return moduleReady;
 }
 
-export function useParticleSystem() {
+export function useParticleSystem(controls: ParticleSystemControls) {
   const {
     particlesNum,
     bounceX,
@@ -45,37 +44,7 @@ export function useParticleSystem() {
     particleOpacity,
     particleColor,
     backgroundColor,
-  } = useControls({
-    particlesNum: {
-      label: 'Particles',
-      value: DEFAULT_PARTICLES_NUM,
-      options: {
-        UltraLow: 1_000,
-        SuperLow: 4_000,
-        VeryLow: 7_000,
-        Low: 10_000,
-        Medium: 50_000,
-        High: 100_000,
-        VeryHigh: 500_000,
-        Ultra: 1_000_000,
-        Mega: 2_000_000,
-        Duper: 3_000_000,
-        Nightmare: 4_000_000,
-        UltraNightmare: 5_000_000,
-      },
-    },
-    particleSize: { value: 2, min: 1, max: 10, step: 1 },
-    particleOpacity: { value: 0.5, min: 0, max: 1, step: 0.01 },
-    spawnRadius: { value: 200, min: 20, max: 500 },
-    particleColor: '#1e272e',
-    backgroundColor: '#ecf0f1',
-    bounceX: true,
-    bounceY: true,
-    squared: true,
-    enableMotionBlur: true,
-    party: false,
-    image: false,
-  });
+  } = controls;
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const appRef = useRef<ParticleSystem | null>(null);

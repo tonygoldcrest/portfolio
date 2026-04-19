@@ -1,14 +1,14 @@
-import { Fragment } from 'react';
+import { useState } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import {
-  faCamera,
-  faChevronUp,
-  faFileImage,
-} from '@fortawesome/free-solid-svg-icons';
+import { faCamera, faFileImage } from '@fortawesome/free-solid-svg-icons';
 import styles from './particle-system-webgl.module.css';
 import { useParticleSystem } from './useParticleSystem';
-import { Accordion, Button, Kbd } from '@heroui/react';
+import { Button } from '@heroui/react';
 import { faGithub } from '@fortawesome/free-brands-svg-icons';
+import { DEFAULT_CONTROLS } from './constants';
+import type { ParticleSystemControls } from './types';
+import { ParticleSystemControls as ParticleSystemControlsPanel } from './ParticleSystemControls';
+import { HotkeysPanel } from '@/components/HotkeysPanel';
 
 const HOTKEYS = [
   { key: 'x', description: 'Explosion at the center of the screen' },
@@ -28,42 +28,48 @@ const HOTKEYS = [
 ];
 
 export default function ParticleSystemWebGL() {
-  const { canvasRef, saveScreenshot, onImageUpload } = useParticleSystem();
+  const [controls, setControls] =
+    useState<ParticleSystemControls>(DEFAULT_CONTROLS);
+
+  function setControl<K extends keyof ParticleSystemControls>(
+    key: K,
+    value: ParticleSystemControls[K],
+  ) {
+    setControls((prev) => ({ ...prev, [key]: value }));
+  }
+
+  const { canvasRef, saveScreenshot, onImageUpload } =
+    useParticleSystem(controls);
 
   return (
     <div className={styles.container}>
       <canvas ref={canvasRef} className={styles.canvas} />
 
-      <Accordion className="absolute bottom-3 left-5 w-80" variant="surface">
-        <Accordion.Item>
-          <Accordion.Heading>
-            <Accordion.Trigger>
-              Hotkeys
-              <Accordion.Indicator>
-                <FontAwesomeIcon icon={faChevronUp} />
-              </Accordion.Indicator>
-            </Accordion.Trigger>
-          </Accordion.Heading>
-          <Accordion.Panel>
-            <Accordion.Body className="grid grid-cols-[max-content_1fr] gap-x-2 divide-y items-center">
-              {HOTKEYS.map(({ key, description }) => (
-                <Fragment key={key}>
-                  <Kbd className="justify-self-center">{key}</Kbd>
-                  <span className="text-sm py-1">{description}</span>
-                </Fragment>
-              ))}
-            </Accordion.Body>
-          </Accordion.Panel>
-        </Accordion.Item>
-      </Accordion>
+      <ParticleSystemControlsPanel
+        controls={controls}
+        setControl={setControl}
+      />
+
+      <HotkeysPanel
+        hotkeys={HOTKEYS}
+        className="absolute bottom-3 left-5 w-80"
+      />
 
       <div className="flex gap-1 absolute bottom-3 right-5">
-        <Button isIconOnly variant="tertiary" onPress={saveScreenshot}>
+        <Button
+          isIconOnly
+          size="lg"
+          variant="tertiary"
+          className="rounded-full"
+          onPress={saveScreenshot}
+        >
           <FontAwesomeIcon icon={faCamera} />
         </Button>
         <Button
           isIconOnly
+          size="lg"
           variant="tertiary"
+          className="rounded-full"
           onPress={() => {
             const input = document.createElement('input');
 
@@ -86,7 +92,9 @@ export default function ParticleSystemWebGL() {
 
         <Button
           isIconOnly
+          size="lg"
           variant="tertiary"
+          className="rounded-full"
           onPress={() =>
             window.open(
               'https://github.com/tonygoldcrest/portfolio/tree/main/src/pages/particle-system-webgl',
